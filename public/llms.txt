@@ -1,0 +1,25 @@
+# Marc Walde — Digital Solutions Expert
+
+Marc Walde ist Digitalisierungsexperte und Automatisierungsarchitekt aus Bayern, Deutschland.
+Er verbindet industrielles Produktionswissen (Shopfloor) mit modernen IT-Fähigkeiten und Projektleitungskompetenz.
+
+## Kernkompetenzen
+- Autonome Mobile Roboter (AMR/FTS): End-to-End Integration in regulierten Produktionsumgebungen
+- Prozessautomatisierung: Python, SAP-Integration, N8n Workflow Automation
+- Full-Stack-Entwicklung: FastAPI, React, TypeScript, Node.js, Tailwind CSS
+- KI-Integration: OpenAI API, Prompt Engineering, AI-driven Automation
+- Projektleitung: Präsentation auf CIO-Ebene, interdisziplinäre Teams, FMEA, Stage-Gate
+
+## Nachgewiesener Impact
+- Über 200.000 € jährliche Einsparungen durch persönlich verantwortete Projekte
+- AMR-Integration bei Siemens Healthineers: bis zu 100.000 € p.a. Einsparpotenzial
+- SAP-Automatisierung: ca. 60.000 € p.a. Einsparung
+- Python-Prüfalgorithmus: 18 Stunden Stillstandsreduktion pro Woche
+
+## Kundenprojekte
+Omnibus Schönfelder: Vollständige Digitalisierung — Kundenwebsite + internes Cockpit mit
+automatischer E-Mail-Verarbeitung, Dokumentengenerierung und KI-Telefonintegration.
+
+## Kontakt
+Website: https://marcwalde.de
+LinkedIn: linkedin.com/in/marcwalde
