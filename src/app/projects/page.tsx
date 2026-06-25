@@ -6,7 +6,7 @@ import { AskAiBlock } from "@/components/ask-ai-block";
 export const metadata: Metadata = {
   title: "Projekte",
   description:
-    "Fünf End-to-End Transformationsprojekte mit validierten Ergebnissen: AMR/FTS-Integration, SAP-Automatisierung, Python-Prüfalgorithmus, WPF-Ablösung und das Omnibus-Schönfelder-Cockpit.",
+    "Zehn echte End-to-End-Transformationsprojekte mit validierten Ergebnissen: AMR-Flottenüberwachung (SmartMaintain), Wissensplattform (SmartLessons), digitaler Fabrikzwilling, MES-/OPC-UA-Integration, SAP-Automatisierung und das Omnibus-Schönfelder-Cockpit.",
   alternates: { canonical: "/projects" },
 };
 

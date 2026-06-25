@@ -24,11 +24,9 @@ export const nav = [
   { href: "/contact", label: "Kontakt" },
 ] as const;
 
-export const kpis = [
-  { value: "> 200.000 €", label: "Jährliche Einsparungen (validiert)", tone: "emerald" as const },
-  { value: "5+", label: "Transformationsprojekte (End-to-End)", tone: "accent" as const },
-  { value: "10+", label: "Jahre Industrie-Erfahrung", tone: "ink" as const },
-];
+// Hinweis: Die KPI-Kennzahlen werden direkt in src/components/kpi-band.tsx
+// gepflegt (animierte Counter). Hier bewusst KEINE zweite Quelle, um die früher
+// auseinandergelaufenen Zahlen (5+ vs. 10) nicht erneut zu riskieren.
 
 // Vorgefertigter Prompt für den „Frag eine KI"-Block.
 export const aiPrompt =

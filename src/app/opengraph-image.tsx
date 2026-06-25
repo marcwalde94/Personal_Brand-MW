@@ -85,7 +85,7 @@ export default function OpengraphImage() {
           </div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ fontSize: 44, fontWeight: 700, color: "#a5b4fc", display: "flex" }}>
-              5+
+              10
             </div>
             <div style={{ fontSize: 22, color: "#9aa6bd", display: "flex" }}>
               E2E-Projekte
