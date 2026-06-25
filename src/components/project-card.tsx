@@ -1,10 +1,12 @@
 import { Factory, Briefcase } from "lucide-react";
 import type { Project } from "@/data/projects";
+import { Tilt } from "./tilt";
 
 export function ProjectCard({ project }: { project: Project }) {
   const Icon = project.category === "kunde" ? Briefcase : Factory;
 
   return (
+    <Tilt className="h-full">
     <article className="card group flex h-full flex-col p-6 md:p-7">
       <div className="flex items-center justify-between">
         <span className="font-display text-sm font-medium text-faint">
@@ -63,5 +65,6 @@ export function ProjectCard({ project }: { project: Project }) {
         </div>
       </div>
     </article>
+    </Tilt>
   );
 }

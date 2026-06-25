@@ -64,7 +64,7 @@ function Counter({ kpi }: { kpi: Kpi }) {
   return (
     <div ref={ref}>
       <div
-        className={`font-display text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl ${toneClass[kpi.tone]}`}
+        className={`font-display t-kpi font-bold ${toneClass[kpi.tone]}`}
       >
         {kpi.prefix}
         {Math.round(val).toLocaleString("de-DE")}

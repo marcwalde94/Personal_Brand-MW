@@ -26,7 +26,7 @@ export default function ProjectsPage() {
         />
       </section>
 
-      <section className="wrap py-12">
+      <section className="wrap-wide py-12">
         <ProjectsExplorer />
       </section>
 

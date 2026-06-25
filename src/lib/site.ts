@@ -8,7 +8,7 @@ export const site = {
   jobTitleDe: "Digitalisierungsexperte & Automatisierungsarchitekt",
   location: "Bayern, Deutschland",
   region: "Erlangen / München",
-  linkedin: "https://www.linkedin.com/in/marcwalde",
+  linkedin: "https://www.linkedin.com/in/marc-walde-602a84277",
   // Wird NICHT im Klartext im HTML angezeigt (Spamschutz). Nur clientseitig
   // beim Absenden des Kontaktformulars zu einem mailto: zusammengesetzt.
   emailUser: "marc.walde94",

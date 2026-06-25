@@ -13,7 +13,7 @@ export function PageHeader({
   return (
     <Reveal className="max-w-3xl">
       {eyebrow && <span className="eyebrow mb-5">{eyebrow}</span>}
-      <h1 className="mt-5 font-display text-4xl font-bold tracking-tight text-balance sm:text-5xl lg:text-[3.6rem] lg:leading-[1.05]">
+      <h1 className="mt-5 font-display t-h1 font-bold text-balance">
         {title}
       </h1>
       {intro && (

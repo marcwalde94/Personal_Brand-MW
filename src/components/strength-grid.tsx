@@ -1,6 +1,7 @@
 import { Network, Workflow, Target, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Reveal } from "./reveal";
+import { Tilt } from "./tilt";
 
 type Strength = {
   icon: LucideIcon;
@@ -36,6 +37,7 @@ export function StrengthGrid() {
     <div className="grid gap-5 sm:grid-cols-2">
       {strengths.map((s, i) => (
         <Reveal key={s.title} delay={i * 0.08}>
+          <Tilt className="h-full">
           <div className="card h-full p-6 md:p-7">
             <div className="grid h-12 w-12 place-items-center rounded-2xl border border-accent/25 bg-accent/10 text-accent-soft">
               <s.icon size={22} aria-hidden="true" />
@@ -45,6 +47,7 @@ export function StrengthGrid() {
             </h3>
             <p className="mt-3 text-[15px] leading-relaxed text-muted">{s.text}</p>
           </div>
+          </Tilt>
         </Reveal>
       ))}
     </div>
