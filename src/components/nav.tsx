@@ -36,7 +36,7 @@ export function Nav() {
         scrolled ? "glass border-b border-border" : "border-b border-transparent"
       }`}
     >
-      <div className="wrap flex h-16 items-center justify-between md:h-20">
+      <div className="wrap-full flex h-16 items-center justify-between md:h-20">
         <Link
           href="/"
           onClick={() => setOpen(false)}
@@ -101,7 +101,7 @@ export function Nav() {
             transition={{ duration: 0.2 }}
             className="glass border-b border-border md:hidden"
           >
-            <nav className="wrap flex flex-col gap-1 py-4">
+            <nav className="wrap-full flex flex-col gap-1 py-4">
               {nav.map((item) => (
                 <Link
                   key={item.href}
