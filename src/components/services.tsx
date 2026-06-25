@@ -15,25 +15,25 @@ const services: Service[] = [
     icon: Workflow,
     title: "Prozessautomatisierung",
     text: "Manuelle Excel-, SAP- und Papierprozesse werden zu automatischen Abläufen. Weniger Fehler, weniger Aufwand, planbare Stabilität.",
-    proof: "Excel→SAP: ca. 60.000 € p.a. eingespart",
+    proof: "QSR-Dashboard: ≈ 44.000 € p.a. eingespart",
   },
   {
     icon: Truck,
     title: "Autonome Intralogistik (AMR/FTS)",
     text: "End-to-End Integration autonomer Roboter in reale, regulierte Produktion — von der Idee bis zum stabilen Serienbetrieb.",
-    proof: "bis zu 100.000 € p.a. Einsparpotenzial",
+    proof: "SmartMaintain: ~710 h Stillstand/Jahr belegt",
   },
   {
     icon: Code2,
     title: "Individuelle Software & Web-Apps",
     text: "Maßgeschneiderte Tools statt instabiler Workarounds: FastAPI, React, .NET — sauber gebaut, im Corporate Design, wartbar.",
-    proof: "WPF-Ablösung: −90 % Bearbeitungszeit",
+    proof: "Lagerverwaltung: ≈ 35.000 € p.a. eingespart",
   },
   {
     icon: Bot,
     title: "KI- & Workflow-Automation",
     text: "KI dort, wo sie wirklich Arbeit abnimmt: automatische Daten- & E-Mail-Verarbeitung, Dokumente, Schnittstellen — von der Idee bis zum Rollout.",
-    proof: "Cockpit: 1× eingeben → 4 Dokumente automatisch",
+    proof: "SmartLessons: ≈ 134.000 € Einsparpotenzial p.a.",
   },
 ];
 

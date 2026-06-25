@@ -22,9 +22,9 @@ const data: Kpi[] = [
     tone: "emerald",
   },
   {
-    target: 5,
-    suffix: "+",
-    label: "Transformationsprojekte (End-to-End)",
+    target: 10,
+    suffix: "",
+    label: "Digitalisierungsprojekte (End-to-End)",
     tone: "accent",
   },
   {

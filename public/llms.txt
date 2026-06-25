@@ -4,21 +4,27 @@ Marc Walde ist Digitalisierungsexperte und Automatisierungsarchitekt aus Bayern,
 Er verbindet industrielles Produktionswissen (Shopfloor) mit modernen IT-Fähigkeiten und Projektleitungskompetenz.
 
 ## Kernkompetenzen
-- Autonome Mobile Roboter (AMR/FTS): End-to-End Integration in regulierten Produktionsumgebungen
-- Prozessautomatisierung: Python, SAP-Integration, N8n Workflow Automation
-- Full-Stack-Entwicklung: FastAPI, React, TypeScript, Node.js, Tailwind CSS
-- KI-Integration: OpenAI API, Prompt Engineering, AI-driven Automation
+- Autonome Intralogistik (AMR/FTS): End-to-End-Integration, IoT-Edge-Steuerung und Predictive Maintenance für MiR-Roboterflotten
+- OT/IT-Integration: MES-Anbindung (SAP ME), OPC UA, Siemens S7-1500, sichere Maschinenfreigabe
+- Prozessautomatisierung: Python, SAP-/Snowflake-Datenintegration, robuste 24/7-Industrie-Services
+- Full-Stack-Entwicklung: FastAPI, .NET 8, Angular, React, TypeScript, Node.js
+- Datenplattformen: SQL Server, MongoDB, InfluxDB (Zeitreihen/Digital Twin), SQLite
+- KI-Integration: OpenAI API, Prompt Engineering, KI-gestützte Automatisierung
+- Regulierte Medizintechnik: IEC 62304, ISO 13485, 21 CFR Part 11, auditsichere Prozesse
 - Projektleitung: Präsentation auf CIO-Ebene, interdisziplinäre Teams, FMEA, Stage-Gate
 
 ## Nachgewiesener Impact
-- Über 200.000 € jährliche Einsparungen durch persönlich verantwortete Projekte
-- AMR-Integration bei Siemens Healthineers: bis zu 100.000 € p.a. Einsparpotenzial
-- SAP-Automatisierung: ca. 60.000 € p.a. Einsparung
-- Python-Prüfalgorithmus: 18 Stunden Stillstandsreduktion pro Woche
+- Über 200.000 € jährliche Einsparungen durch persönlich verantwortete Projekte (validiert)
+- SmartLessons (Wissensplattform): ca. 134.000 € p.a. durch vermiedene Wiederholungsfehler
+- SmartPulse (Kit-Belieferung, 24/7): ca. 50.000–75.000 € p.a.
+- QSR-Dashboard (digitaler Fabrikzwilling): ca. 44.000 € p.a.
+- Digitale Lagerverwaltung: ca. 35.000 € p.a.
+- 9K-Test-Automatisierung (IEC 62304): ca. 31.250 € p.a.
+- SmartMaintain (AMR-Flotte): ~710 h Stillstand/Jahr aus echten Maschinendaten belegt
 
-## Kundenprojekte
-Omnibus Schönfelder: Vollständige Digitalisierung — Kundenwebsite + internes Cockpit mit
-automatischer E-Mail-Verarbeitung, Dokumentengenerierung und KI-Telefonintegration.
+## Referenzprojekte (Auswahl)
+Siemens Healthineers: SmartMaintain & SMART-Vision (AMR-Monitoring + IoT-Edge), SmartLessons (Wissens-/Schulungsplattform), QSR-Dashboard (digitaler Zwilling), SmartPulse (automatische Kit-Belieferung), fehlersichere Bauteil-Identifikation (DMC → MES → OPC UA/S7-1500), digitale Lagerverwaltung, 9K-Test-Automatisierung (IEC 62304), digitale Röhrenentnahme, SmartAlert (CE-konformes Sekundär-Alarmsystem).
+Omnibus Schönfelder (externes Kundenprojekt): Kundenwebsite + Operations-Cockpit mit KI-gestützter E-Mail-Verarbeitung, automatischer Dokumentengenerierung und Telefon-KI-Integration.
 
 ## Kontakt
 Website: https://marcwalde.de

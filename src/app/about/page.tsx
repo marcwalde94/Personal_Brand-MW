@@ -22,36 +22,41 @@ const facts = [
 
 const stack = [
   {
-    group: "Automatisierung & Robotik",
+    group: "Automatisierung, Robotik & IoT",
     items: [
-      "AMR / FTS (MiR-Systeme)",
-      "IoT-Plattformen",
-      "Industrie 4.0 / Smart Factory",
-      "Aufzug- & Anlagenintegration",
+      "AMR-Flotten (MiR)",
+      "IoT / Edge (ESP32, Industriesensorik)",
+      "OPC UA · Siemens S7-1500",
+      "Industrie 4.0 / Digital Twin",
     ],
   },
   {
-    group: "Prozesse & Integration",
-    items: ["SAP S/4HANA", "SimDia²", "N8n Workflow Automation", "FMEA", "Stage-Gate"],
+    group: "Systeme & Integration",
+    items: [
+      "SAP (MES/ME · S/4HANA · DWH)",
+      "Snowflake",
+      "Azure AD / Microsoft Graph",
+      "SAP BTP",
+      "FMEA · Stage-Gate",
+    ],
   },
   {
-    group: "Entwicklung",
+    group: "Software-Entwicklung",
     items: [
-      "Python",
-      "C# / .NET (WPF)",
-      "TypeScript",
-      "React",
-      "FastAPI",
+      "Python · FastAPI",
+      ".NET 8 / C#",
+      "Angular · React · TypeScript",
       "Node.js",
-      "Tailwind CSS",
+      "SQL Server · MongoDB · InfluxDB · SQLite",
     ],
   },
   {
-    group: "Künstliche Intelligenz",
+    group: "Qualität, Regulierung & KI",
     items: [
-      "OpenAI API",
-      "Prompt Engineering",
-      "KI-gestützte Prozessautomatisierung",
+      "IEC 62304 · ISO 13485",
+      "21 CFR Part 11 · Audit-Trails",
+      "OpenAI API · Prompt Engineering",
+      "CI/CD (Azure Pipelines)",
     ],
   },
 ];

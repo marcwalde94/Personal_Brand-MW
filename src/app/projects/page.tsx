@@ -22,7 +22,7 @@ export default function ProjectsPage() {
               <span className="text-gradient">halten.</span>
             </>
           }
-          intro="Von autonomer Intralogistik bis zum kompletten Digitalisierungs-Cockpit — jedes Projekt von Konzept bis in den stabilen Betrieb, mit dokumentierten Zahlen."
+          intro="Zehn echte Transformationsprojekte — von autonomer Intralogistik und digitalem Fabrikzwilling bis zum kompletten Operations-Cockpit. Jedes von Konzept bis in den stabilen Betrieb, mit dokumentierten Zahlen."
         />
       </section>
 

@@ -21,11 +21,18 @@ const body = Inter({
 const knowsAbout = [
   "Industrial Automation",
   "AMR / Autonomous Mobile Robots",
+  "Predictive Maintenance",
+  "IoT / Edge Computing",
+  "Manufacturing Execution Systems (MES)",
+  "OPC UA / Siemens S7-1500",
+  "Digital Twin",
   "Process Digitalization",
   "SAP Integration",
-  "Python Development",
-  "React / FastAPI / Node.js",
+  "Python / FastAPI",
+  ".NET / C#",
+  "Angular / React / TypeScript",
   "AI-driven Process Automation",
+  "IEC 62304 / ISO 13485",
   "Smart Factory",
 ];
 
