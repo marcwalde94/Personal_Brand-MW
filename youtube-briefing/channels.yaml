@@ -1,0 +1,31 @@
+# Kanäle, die das Wochen-Briefing beobachtet.
+# ---------------------------------------------------------------------------
+# Channel-ID finden (zuverlässigster Weg):
+#   1. Kanal-Seite auf youtube.com öffnen
+#   2. Seitenquelltext anzeigen (Strg+U) und nach "channelId" suchen
+#      -> Wert beginnt mit "UC..." (24 Zeichen)
+#   ODER:  https://www.youtube.com/@HANDLE  ->  "...über..." / "Teilen" -> Kanal-ID kopieren
+#   ODER:  Tools wie commentpicker.com/youtube-channel-id.php (Handle einfügen)
+#
+# Pro Kanal genügt EINS von beidem:
+#   channel_id: "UC..."     (empfohlen, eindeutig)
+#   handle: "@HandleName"    (wird zur Laufzeit aufgelöst — bequemer, 1 API-Call mehr)
+# ---------------------------------------------------------------------------
+
+lookback_hours: 168          # 7 Tage — passend zum Freitags-Rhythmus
+max_videos_per_channel: 15   # Sicherheitskappe pro Kanal und Lauf
+# model: claude-opus-4-8     # optional hier überschreibbar; sonst via CLAUDE_MODEL-Env
+
+channels:
+  - name: "Nick Saraev"
+    # channel_id: "UC..."    # <- HIER eintragen (siehe Anleitung oben)
+    handle: "@nicksaraev"
+
+  - name: "Liam Ottley"
+    # channel_id: "UC..."    # <- HIER eintragen
+    handle: "@LiamOttley"
+
+# Optional: Videos überspringen, deren Titel eines dieser Wörter enthält (lowercase-Vergleich)
+title_stopwords:
+  # - "shorts"
+  # - "podcast"

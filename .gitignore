@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# youtube-briefing (Python pipeline)
+__pycache__/
+*.pyc
+youtube-briefing/.venv/
+# Hinweis: youtube-briefing/seen.json wird ABSICHTLICH getrackt — der
+# GitHub-Actions-Workflow committet es zurück, damit Videos nicht doppelt kommen.

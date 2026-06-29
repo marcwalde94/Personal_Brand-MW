@@ -1,0 +1,8 @@
+# YouTube-Wochen-Briefing — Python-Abhängigkeiten
+# Installieren:  pip install -r requirements.txt
+
+anthropic>=0.69.0            # Claude SDK (messages.create + output_config.format)
+google-api-python-client>=2.0  # YouTube Data API v3
+youtube-transcript-api==0.6.2  # Transkripte (stabile API mit get_transcript)
+PyYAML>=6.0                  # channels.yaml
+python-dotenv>=1.0           # .env laden
