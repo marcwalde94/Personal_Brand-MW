@@ -1,0 +1,59 @@
+name: YouTube-Wochen-Briefing
+
+# Wöchentlich freitags früh + manuell auslösbar (Actions-Tab -> "Run workflow").
+on:
+  schedule:
+    - cron: "0 6 * * 5" # Freitag 06:00 UTC (~07:00/08:00 DE). GitHub plant in UTC.
+  workflow_dispatch:
+
+# seen.json wird nach dem Lauf zurück committet, damit nichts doppelt kommt.
+permissions:
+  contents: write
+
+concurrency:
+  group: youtube-briefing
+  cancel-in-progress: false
+
+jobs:
+  briefing:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: youtube-briefing/requirements.txt
+
+      - name: Abhängigkeiten installieren
+        working-directory: youtube-briefing
+        run: pip install -r requirements.txt
+
+      - name: Briefing erzeugen & senden
+        working-directory: youtube-briefing
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL }} # optional (Repo-Variable); leer = Default opus-4-8
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          SMTP_TO: ${{ secrets.SMTP_TO }}
+        run: python briefing.py
+
+      - name: seen.json zurück committen (gegen Doppel-Mails)
+        run: |
+          if [[ -n "$(git status --porcelain youtube-briefing/seen.json)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add youtube-briefing/seen.json
+            git commit -m "chore: update youtube-briefing seen.json [skip ci]"
+            git push
+          else
+            echo "seen.json unverändert — kein Commit."
+          fi
