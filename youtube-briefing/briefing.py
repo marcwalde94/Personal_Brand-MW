@@ -34,9 +34,10 @@ from dataclasses import dataclass, field
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
+from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 # ---------------------------------------------------------------------------
@@ -304,6 +305,24 @@ def fetch_transcript(video_id: str) -> str:
     return "\n".join(lines)
 
 
+# Strukturierte Ausgabe: Pydantic-Modell -> client.messages.parse() validiert selbst.
+# Die int-Range 1..10 erzwingt Structured Output nicht (keine min/max), daher per
+# Literal eingegrenzt; im Code zusaetzlich geclampt.
+class VideoSummary(BaseModel):
+    topic: str = Field(description="1 Satz: Worum geht es im Video?")
+    whats_new: str = Field(description="1 Satz: Was ist neu/anders? '—' wenn nichts.")
+    relevance: str = Field(
+        description="1-2 Saetze: Relevanz konkret fuer Marc — Konzern (Digitalisierung/KI) "
+        "vs. Side-Hustle (KMU-Software, Akquise) trennen."
+    )
+    timestamp: str = Field(description="Zeitmarke der relevantesten Stelle, z. B. '12:30'. '—' wenn unklar.")
+    verdict: Literal["SCHAUEN", "ÜBERSPRINGEN"]
+    score: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10] = Field(
+        description="Relevanz fuer Marc: 1 (irrelevant) bis 10 (Pflicht)."
+    )
+
+
+# Roh-Schema nur noch als Fallback fuer sehr alte SDKs ohne messages.parse().
 SUMMARY_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -392,50 +411,82 @@ def summarize_video(client, model: str, profile: str, v: Video) -> None:
         }
     ]
 
-    kwargs: dict[str, Any] = {
+    base_kwargs: dict[str, Any] = {
         "model": model,
-        "max_tokens": 2048,
+        "max_tokens": 4096,  # Luft fuer adaptive thinking + JSON -> keine Truncation
         "system": system_blocks,
         "messages": [{"role": "user", "content": user_content}],
-        "output_config": {"format": {"type": "json_schema", "schema": SUMMARY_SCHEMA}},
         **_thinking_kwargs(model),
     }
 
     try:
-        resp = client.messages.create(**kwargs)
-    except anthropic.APIStatusError as exc:
-        # output_config wird von sehr alten SDKs evtl. nicht akzeptiert -> ohne erneut versuchen
-        log(f"  API-Fehler ({exc.status_code}) — versuche ohne structured output.")
-        kwargs.pop("output_config", None)
-        kwargs["messages"][0]["content"] += (
-            "\n\nAntworte AUSSCHLIESSLICH mit JSON nach diesem Schema "
-            '(keys: topic, whats_new, relevance, timestamp, verdict, score).'
-        )
-        try:
-            resp = client.messages.create(**kwargs)
-        except anthropic.APIError as exc2:
-            v.error = f"Claude-Fehler: {exc2}"
-            log(f"  {v.error}")
-            return
+        data, stop_reason = _ask_claude(client, base_kwargs)
     except anthropic.APIError as exc:
         v.error = f"Claude-Fehler: {exc}"
         log(f"  {v.error}")
         return
 
-    text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
-    data = _parse_json(text)
+    if stop_reason == "refusal":
+        v.error = "Claude hat die Einschaetzung abgelehnt (Sicherheitsfilter)."
+        return
     if data is None:
-        v.error = "Antwort nicht als JSON lesbar."
-        v.topic = text[:300]
+        v.error = (
+            "Antwort abgeschnitten (max_tokens zu klein)."
+            if stop_reason == "max_tokens"
+            else "Antwort nicht lesbar."
+        )
         return
 
-    v.topic = str(data.get("topic", "")).strip()
-    v.whats_new = str(data.get("whats_new", "—")).strip()
-    v.relevance = str(data.get("relevance", "")).strip()
-    v.timestamp = str(data.get("timestamp", "—")).strip() or "—"
-    v.verdict = "SCHAUEN" if str(data.get("verdict", "")).upper().startswith("SCHAU") else "ÜBERSPRINGEN"
+    _apply_summary(v, data)
+
+
+def _ask_claude(client, base_kwargs: dict[str, Any]) -> tuple[dict[str, Any] | None, str | None]:
+    """Primaer: messages.parse() (SDK validiert gegen VideoSummary).
+    Fallback: create() + rohes output_config + manuelles JSON-Parsen (alte SDKs).
+    Liefert (geparste Felder | None, stop_reason)."""
+    import anthropic
+
     try:
-        v.score = int(data.get("score", 0))
+        resp = client.messages.parse(output_format=VideoSummary, **base_kwargs)
+    except (AttributeError, TypeError):
+        resp = None  # SDK ohne parse()/output_format
+    except anthropic.APIStatusError as exc:
+        log(f"  parse() API-Fehler ({exc.status_code}) — Fallback auf create().")
+        resp = None
+
+    if resp is not None:
+        if resp.stop_reason == "refusal":
+            return None, "refusal"
+        for b in resp.content:
+            parsed = getattr(b, "parsed_output", None)
+            if parsed is not None:
+                return parsed.model_dump(), resp.stop_reason
+        return None, resp.stop_reason  # lief durch, aber kein valides Objekt (z. B. Truncation)
+
+    # Fallbackweg
+    kwargs = dict(base_kwargs)
+    kwargs["output_config"] = {"format": {"type": "json_schema", "schema": SUMMARY_SCHEMA}}
+    msg0 = dict(base_kwargs["messages"][0])
+    msg0["content"] = msg0["content"] + (
+        "\n\nAntworte AUSSCHLIESSLICH mit JSON (keys: topic, whats_new, relevance, "
+        "timestamp, verdict, score)."
+    )
+    kwargs["messages"] = [msg0]
+    resp = client.messages.create(**kwargs)
+    if resp.stop_reason == "refusal":
+        return None, "refusal"
+    text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text").strip()
+    return _parse_json(text), resp.stop_reason
+
+
+def _apply_summary(v: Video, d: dict[str, Any]) -> None:
+    v.topic = str(d.get("topic", "")).strip()
+    v.whats_new = str(d.get("whats_new", "—")).strip() or "—"
+    v.relevance = str(d.get("relevance", "")).strip()
+    v.timestamp = str(d.get("timestamp", "—")).strip() or "—"
+    v.verdict = "SCHAUEN" if str(d.get("verdict", "")).upper().startswith("SCHAU") else "ÜBERSPRINGEN"
+    try:
+        v.score = max(1, min(10, int(d.get("score", 0))))
     except (TypeError, ValueError):
         v.score = 0
 
@@ -595,8 +646,11 @@ def send_email(subject: str, text_body: str, html_body: str | None) -> None:
         msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     log(f"Sende Mail an {recipient} ueber {host}:{port}")
-    with smtplib.SMTP(host, port, timeout=30) as server:
-        server.starttls()
+    # Port 465 = implizites SSL (SMTP_SSL); sonst STARTTLS (z. B. 587).
+    server_cls = smtplib.SMTP_SSL if port == 465 else smtplib.SMTP
+    with server_cls(host, port, timeout=30) as server:
+        if port != 465:
+            server.starttls()
         server.login(user, password)
         server.send_message(msg)
     log("Mail gesendet.")
