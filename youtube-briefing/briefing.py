@@ -76,6 +76,8 @@ class Video:
     published_at: dt.datetime
     description: str = ""
     url: str = ""
+    source: str = ""  # woher gefunden: Kanalname oder "Suche: <query>"
+    views: int = 0
     transcript: str = ""
     transcript_available: bool = False
     # Von Claude befuellt:
@@ -90,9 +92,15 @@ class Video:
 
 @dataclass
 class Config:
-    lookback_hours: int = DEFAULT_LOOKBACK_HOURS
+    lookback_hours: int = DEFAULT_LOOKBACK_HOURS          # Weekly-Fenster (Kanäle + Suchen)
+    backlog_days: int = 180                               # --initial: Best-of-Zeitraum (6 Mon.)
     max_videos_per_channel: int = 15
+    max_per_source: int = 15                              # Kappe pro Kanal/Suchbegriff
+    top_n_backlog: int = 15                               # --initial: nur die Top N behalten
+    min_score: int = 6                                    # Signal-Filter: darunter fliegt raus
+    max_scored: int = 40                                  # Kostendeckel: max. so viele an Claude
     channels: list[dict[str, str]] = field(default_factory=list)
+    searches: list[str] = field(default_factory=list)    # Themen-Queries (YouTube-Suche)
     title_stopwords: list[str] = field(default_factory=list)
     model: str = DEFAULT_MODEL
 
@@ -116,12 +124,19 @@ def load_config() -> Config:
         fail(f"channels.yaml fehlt ({CHANNELS_FILE}). Siehe README.")
     raw = yaml.safe_load(CHANNELS_FILE.read_text(encoding="utf-8")) or {}
     channels = raw.get("channels") or []
-    if not channels:
-        fail("channels.yaml enthaelt keine Kanaele. Siehe README (Channel-IDs eintragen).")
+    searches = [str(s) for s in (raw.get("searches") or [])]
+    if not channels and not searches:
+        fail("channels.yaml hat weder Kanaele noch Suchbegriffe. Siehe README.")
     return Config(
         lookback_hours=int(raw.get("lookback_hours", DEFAULT_LOOKBACK_HOURS)),
+        backlog_days=int(raw.get("backlog_days", 180)),
         max_videos_per_channel=int(raw.get("max_videos_per_channel", 15)),
+        max_per_source=int(raw.get("max_per_source", 15)),
+        top_n_backlog=int(raw.get("top_n_backlog", 15)),
+        min_score=int(raw.get("min_score", 6)),
+        max_scored=int(raw.get("max_scored", 40)),
         channels=channels,
+        searches=searches,
         title_stopwords=[s.lower() for s in (raw.get("title_stopwords") or [])],
         model=os.environ.get("CLAUDE_MODEL", str(raw.get("model", DEFAULT_MODEL))),
     )
@@ -201,10 +216,14 @@ def resolve_uploads_playlist(youtube, entry: dict[str, str]) -> tuple[str, str]:
     return name, uploads
 
 
-def fetch_recent_videos(youtube, cfg: Config) -> list[Video]:
-    cutoff = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=cfg.lookback_hours)
-    videos: list[Video] = []
+def _cutoff(initial: bool, cfg: Config) -> dt.datetime:
+    hours = cfg.backlog_days * 24 if initial else cfg.lookback_hours
+    return dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)
 
+
+def fetch_channel_videos(youtube, cfg: Config, cutoff: dt.datetime) -> list[Video]:
+    """Uploads der abonnierten Kanaele im Zeitfenster."""
+    videos: list[Video] = []
     for entry in cfg.channels:
         try:
             name, uploads = resolve_uploads_playlist(youtube, entry)
@@ -227,7 +246,7 @@ def fetch_recent_videos(youtube, cfg: Config) -> list[Video]:
                 continue
             published = dt.datetime.fromisoformat(published_raw.replace("Z", "+00:00"))
             if published < cutoff:
-                continue  # Uploads-Playlist ist chronologisch — aelter = fertig
+                break  # Uploads-Playlist ist chronologisch — ab hier nur noch aeltere
             vid = sn["resourceId"]["videoId"]
             videos.append(
                 Video(
@@ -237,14 +256,93 @@ def fetch_recent_videos(youtube, cfg: Config) -> list[Video]:
                     published_at=published,
                     description=sn.get("description", ""),
                     url=f"https://www.youtube.com/watch?v={vid}",
+                    source=name,
                 )
             )
             count += 1
-            if count >= cfg.max_videos_per_channel:
+            if count >= cfg.max_per_source:
                 break
         log(f"  -> {count} Video(s) im Zeitfenster")
-
     return videos
+
+
+def fetch_search_videos(youtube, cfg: Config, cutoff: dt.datetime, order: str) -> list[Video]:
+    """Themen-Suche ueber YouTube — findet relevante Videos beliebiger Kanaele."""
+    videos: list[Video] = []
+    published_after = cutoff.strftime("%Y-%m-%dT%H:%M:%SZ")
+    for query in cfg.searches:
+        try:
+            resp = (
+                youtube.search()
+                .list(
+                    part="snippet",
+                    q=query,
+                    type="video",
+                    order=order,  # "date" (weekly) oder "relevance" (initial)
+                    publishedAfter=published_after,
+                    maxResults=min(cfg.max_per_source, 25),
+                    relevanceLanguage="en",
+                )
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001 — eine kaputte Suche darf den Lauf nicht killen
+            log(f"Suche uebersprungen ('{query}'): {exc}")
+            continue
+        count = 0
+        for it in resp.get("items", []):
+            vid = (it.get("id") or {}).get("videoId")
+            if not vid:
+                continue
+            sn = it["snippet"]
+            published = dt.datetime.fromisoformat(sn["publishedAt"].replace("Z", "+00:00"))
+            videos.append(
+                Video(
+                    video_id=vid,
+                    title=sn.get("title", "(ohne Titel)"),
+                    channel=sn.get("channelTitle", "?"),
+                    published_at=published,
+                    description=sn.get("description", ""),
+                    url=f"https://www.youtube.com/watch?v={vid}",
+                    source=f"Suche: {query}",
+                )
+            )
+            count += 1
+        log(f"Suche '{query}' -> {count} Treffer")
+    return videos
+
+
+def fetch_view_counts(youtube, videos: list[Video]) -> None:
+    """Aufrufzahlen nachladen (fuer Ranking + Anzeige). 1 Quota-Einheit je 50 IDs."""
+    stats: dict[str, int] = {}
+    ids = [v.video_id for v in videos]
+    for i in range(0, len(ids), 50):
+        try:
+            resp = youtube.videos().list(part="statistics", id=",".join(ids[i : i + 50])).execute()
+        except Exception as exc:  # noqa: BLE001
+            log(f"Aufrufzahlen-Batch uebersprungen: {exc}")
+            continue
+        for it in resp.get("items", []):
+            stats[it["id"]] = int(it.get("statistics", {}).get("viewCount", 0) or 0)
+    for v in videos:
+        v.views = stats.get(v.video_id, 0)
+
+
+def collect_videos(youtube, cfg: Config, initial: bool) -> list[Video]:
+    """Kanäle + Themen-Suche einsammeln, per video_id deduplizieren."""
+    cutoff = _cutoff(initial, cfg)
+    order = "relevance" if initial else "date"
+    collected = fetch_channel_videos(youtube, cfg, cutoff) + fetch_search_videos(
+        youtube, cfg, cutoff, order
+    )
+    seen_ids: set[str] = set()
+    unique: list[Video] = []
+    for v in collected:
+        if v.video_id in seen_ids:
+            continue
+        seen_ids.add(v.video_id)
+        unique.append(v)
+    log(f"{len(unique)} eindeutige Kandidaten ({len(cfg.channels)} Kanäle + {len(cfg.searches)} Suchen).")
+    return unique
 
 
 # ---------------------------------------------------------------------------
@@ -525,26 +623,36 @@ def _verdict_badge(v: Video) -> str:
     return "✅ SCHAUEN" if v.verdict == "SCHAUEN" else "⏭️ überspringen"
 
 
-def render_text(videos: list[Video], when: dt.date) -> str:
+def _fmt_views(n: int) -> str:
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f}M Aufrufe"
+    if n >= 1_000:
+        return f"{n / 1_000:.0f}k Aufrufe"
+    return f"{n} Aufrufe"
+
+
+def _via_search(v: Video) -> str:
+    return v.source if v.source.startswith("Suche:") else ""
+
+
+def render_text(videos: list[Video], when: dt.date, heading: str, top_label: str) -> str:
     watch = [v for v in videos if v.verdict == "SCHAUEN"]
     top = max(videos, key=lambda x: x.score, default=None)
 
     lines = [
-        f"YouTube-Wochen-Briefing — {when:%d.%m.%Y}",
-        f"{len(videos)} neue Videos · {len(watch)} Empfehlung(en) zum Schauen",
+        f"{heading} — {when:%d.%m.%Y}",
+        f"{len(videos)} Videos · {len(watch)} Empfehlung(en) zum Schauen",
         "",
     ]
     if top and top.score > 0:
-        lines += [f"⭐ TOP DER WOCHE: {top.title} ({top.channel}) — Score {top.score}/10", ""]
+        lines += [f"⭐ {top_label}: {top.title} ({top.channel}) — Score {top.score}/10", ""]
     lines.append("=" * 60)
 
     for v in videos:
-        lines += [
-            "",
-            f"{_verdict_badge(v)}  ·  Score {v.score}/10  ·  {v.channel}",
-            f"{v.title}",
-            f"{v.url}",
-        ]
+        meta = f"{_verdict_badge(v)}  ·  Score {v.score}/10  ·  {_fmt_views(v.views)}  ·  {v.channel}"
+        lines += ["", meta, f"{v.title}", f"{v.url}"]
+        if _via_search(v):
+            lines.append(f"  (gefunden über {v.source})")
         if v.error:
             lines.append(f"  ⚠ {v.error}")
             continue
@@ -560,7 +668,7 @@ def render_text(videos: list[Video], when: dt.date) -> str:
     return "\n".join(lines)
 
 
-def render_html(videos: list[Video], when: dt.date) -> str:
+def render_html(videos: list[Video], when: dt.date, heading: str, top_label: str) -> str:
     watch = [v for v in videos if v.verdict == "SCHAUEN"]
     top = max(videos, key=lambda x: x.score, default=None)
     e = html.escape
@@ -569,6 +677,10 @@ def render_html(videos: list[Video], when: dt.date) -> str:
     for v in videos:
         watch_style = "border-left:4px solid #16a34a;" if v.verdict == "SCHAUEN" else "border-left:4px solid #9ca3af;"
         rows = []
+        if _via_search(v):
+            rows.append(
+                f'<p style="margin:6px 0;color:#6b7280;font-size:12px;">gefunden über {e(v.source)}</p>'
+            )
         if v.error:
             rows.append(f'<p style="color:#b91c1c;margin:6px 0;">⚠ {e(v.error)}</p>')
         else:
@@ -586,7 +698,7 @@ def render_html(videos: list[Video], when: dt.date) -> str:
             <div style="background:#fff;{watch_style}border-radius:8px;padding:16px 18px;margin:14px 0;
                         box-shadow:0 1px 3px rgba(0,0,0,.08);">
               <div style="font-size:12px;color:#6b7280;text-transform:uppercase;letter-spacing:.04em;">
-                {e(_verdict_badge(v))} &nbsp;·&nbsp; Score {v.score}/10 &nbsp;·&nbsp; {e(v.channel)}
+                {e(_verdict_badge(v))} &nbsp;·&nbsp; Score {v.score}/10 &nbsp;·&nbsp; {e(_fmt_views(v.views))} &nbsp;·&nbsp; {e(v.channel)}
               </div>
               <a href="{e(v.url)}" style="font-size:17px;font-weight:600;color:#111827;text-decoration:none;
                  display:block;margin:6px 0;">{e(v.title)}</a>
@@ -598,7 +710,7 @@ def render_html(videos: list[Video], when: dt.date) -> str:
     if top and top.score > 0:
         top_banner = (
             f'<div style="background:#111827;color:#fff;border-radius:8px;padding:14px 18px;margin:14px 0;">'
-            f'⭐ <b>Top der Woche:</b> <a href="{e(top.url)}" style="color:#fbbf24;text-decoration:none;">'
+            f'⭐ <b>{e(top_label)}:</b> <a href="{e(top.url)}" style="color:#fbbf24;text-decoration:none;">'
             f"{e(top.title)}</a> &nbsp;·&nbsp; {e(top.channel)} &nbsp;·&nbsp; Score {top.score}/10</div>"
         )
 
@@ -606,8 +718,8 @@ def render_html(videos: list[Video], when: dt.date) -> str:
 <meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;background:#f3f4f6;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111827;">
   <div style="max-width:680px;margin:0 auto;padding:24px 16px;">
-    <h1 style="font-size:22px;margin:0 0 4px;">YouTube-Wochen-Briefing</h1>
-    <p style="color:#6b7280;margin:0 0 16px;">{when:%d.%m.%Y} &nbsp;·&nbsp; {len(videos)} neue Videos
+    <h1 style="font-size:22px;margin:0 0 4px;">{e(heading)}</h1>
+    <p style="color:#6b7280;margin:0 0 16px;">{when:%d.%m.%Y} &nbsp;·&nbsp; {len(videos)} Videos
        &nbsp;·&nbsp; {len(watch)} Empfehlung(en)</p>
     {top_banner}
     {''.join(cards)}
@@ -616,10 +728,11 @@ def render_html(videos: list[Video], when: dt.date) -> str:
   </div></body></html>"""
 
 
-def render_empty_text(when: dt.date) -> str:
+def render_empty_text(when: dt.date, heading: str) -> str:
     return (
-        f"YouTube-Wochen-Briefing — {when:%d.%m.%Y}\n\n"
-        "Diese Woche keine neuen Videos in deinen Kanaelen. Geniess das Wochenende."
+        f"{heading} — {when:%d.%m.%Y}\n\n"
+        "Diese Woche nichts ausreichend Relevantes gefunden (Kanäle + Themen-Suche). "
+        "Geniess das Wochenende."
     )
 
 
@@ -662,9 +775,14 @@ def send_email(subject: str, text_body: str, html_body: str | None) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="YouTube-Wochen-Briefing")
+    parser = argparse.ArgumentParser(description="YouTube-Briefing (Kanäle + Themen-Suche)")
     parser.add_argument("--dry-run", action="store_true", help="Briefing nur auf stdout, kein SMTP/seen-Update")
     parser.add_argument("--no-dedupe", action="store_true", help="seen.json ignorieren")
+    parser.add_argument(
+        "--initial",
+        action="store_true",
+        help="Einmaliger Best-of-Backlog über backlog_days, nur Top-N (statt Wochenfenster).",
+    )
     args = parser.parse_args()
 
     load_dotenv(HERE / ".env")
@@ -673,34 +791,68 @@ def main() -> int:
     seen = load_seen()
     today = dt.date.today()
 
-    log(f"Modell: {cfg.model} · Zeitfenster: {cfg.lookback_hours}h · Kanaele: {len(cfg.channels)}")
+    if args.initial:
+        heading, top_label = "Initiales Best-of-Briefing", "Top-Empfehlung"
+        window = f"{cfg.backlog_days} Tage (Backlog)"
+    else:
+        heading, top_label = "YouTube-Wochen-Briefing", "Top der Woche"
+        window = f"{cfg.lookback_hours}h"
+    log(f"Modus: {'INITIAL' if args.initial else 'weekly'} · Modell: {cfg.model} · "
+        f"Fenster: {window} · Kanäle: {len(cfg.channels)} · Suchen: {len(cfg.searches)}")
 
-    # [1] SAMMELN
+    # [1] SAMMELN (Kanäle + Themen-Suche, dedupliziert)
     youtube = build_youtube_client()
-    collected = fetch_recent_videos(youtube, cfg)
+    collected = collect_videos(youtube, cfg, initial=args.initial)
 
-    # [2] FILTERN
+    # [2] FILTERN (Stopwords + bereits gesehen)
     videos = filter_videos(collected, seen, cfg, use_dedupe=not args.no_dedupe)
-    log(f"{len(videos)} neue Video(s) nach Filter.")
+
+    # Aufrufzahlen laden (Ranking + Anzeige), dann Kostendeckel: nur die
+    # populärsten `max_scored` Kandidaten gehen an Claude.
+    if videos:
+        fetch_view_counts(youtube, videos)
+        if len(videos) > cfg.max_scored:
+            videos.sort(key=lambda x: x.views, reverse=True)
+            log(f"Kostendeckel: {len(videos)} → {cfg.max_scored} Kandidaten (nach Aufrufen).")
+            videos = videos[: cfg.max_scored]
 
     if not videos:
-        subject = f"YouTube-Wochen-Briefing {today:%d.%m.} — nichts Neues"
-        text = render_empty_text(today)
-        if args.dry_run:
-            print(text)
-        else:
+        subject = f"{heading} {today:%d.%m.} — nichts Relevantes"
+        text = render_empty_text(today, heading)
+        if not args.dry_run:
             send_email(subject, text, None)
+        else:
+            print(text)
         return 0
 
-    # [3] AUFBEREITEN
+    # [3] AUFBEREITEN (Transkript + Claude-Score)
     enrich_videos(videos, cfg, profile)
-    videos.sort(key=lambda x: (x.verdict != "SCHAUEN", -x.score, -x.published_at.timestamp()))
+
+    # Signal-Filter: nur klar Relevantes behalten (Standard Score ≥ min_score).
+    videos = [v for v in videos if v.score >= cfg.min_score]
+    log(f"{len(videos)} Video(s) mit Score ≥ {cfg.min_score}.")
+
+    if not videos:
+        subject = f"{heading} {today:%d.%m.} — nichts Relevantes"
+        text = render_empty_text(today, heading)
+        if not args.dry_run:
+            send_email(subject, text, None)
+        else:
+            print(text)
+        return 0
+
+    if args.initial:
+        # Best-of: nach Relevanz, dann Beliebtheit; auf Top-N kürzen.
+        videos.sort(key=lambda x: (-x.score, -x.views))
+        videos = videos[: cfg.top_n_backlog]
+    else:
+        videos.sort(key=lambda x: (x.verdict != "SCHAUEN", -x.score, -x.published_at.timestamp()))
 
     # [4] ZUSTELLEN
     n_watch = sum(1 for v in videos if v.verdict == "SCHAUEN")
-    subject = f"YouTube-Wochen-Briefing {today:%d.%m.} — {len(videos)} Videos, {n_watch} Empfehlung(en)"
-    text = render_text(videos, today)
-    html_body = render_html(videos, today)
+    subject = f"{heading} {today:%d.%m.} — {len(videos)} Videos, {n_watch} Empfehlung(en)"
+    text = render_text(videos, today, heading, top_label)
+    html_body = render_html(videos, today, heading, top_label)
 
     if args.dry_run:
         print(text)

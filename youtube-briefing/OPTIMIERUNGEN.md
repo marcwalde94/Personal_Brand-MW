@@ -107,3 +107,39 @@ Bewusst *nicht* gemacht, damit die App schlank bleibt — aber gut zu wissen:
 
 > Kurz: **Profil + System-Prompt** sind deine zwei Stellschrauben für *Qualität*,
 > **Modellwahl + Transkript-Kappung** für *Kosten*. Code-Logik musst du dafür nicht anfassen.
+
+---
+
+## Teil 6 — V2: Von „Kanäle beobachten" zu „Themen entdecken"
+
+**Problem:** Wenige feste Creator posten unregelmäßig → das Wochen-Briefing ist oft
+leer. **Lösung:** Zwei Quellen statt einer.
+
+- **Kanal-Quelle** (`channels:`): holt Uploads bestimmter Creator. Präzise, aber nur
+  so aktiv wie die Creator.
+- **Themen-Quelle** (`searches:`): `youtube.search()` durchsucht *ganz YouTube* nach
+  deinen Begriffen. Findet auch neue Kanäle — aber liefert **mehr Rauschen**.
+- Beide werden gemerged und per `video_id` **dedupliziert** (dasselbe Video kann über
+  mehrere Suchen/Kanäle kommen).
+
+**Lerneffekt — zwei Kosten- und Signal-Hebel, die zusammenspielen:**
+1. **Signal-Filter (`min_score`):** Weil die Themen-Suche Müll findet, bewertet Claude
+   jedes Video 1–10, und nur ab `min_score` (6) kommt es rein. → *Qualität* filtern
+   passiert **nach** dem Verstehen, nicht über plumpe Keyword-Regeln.
+2. **Kostendeckel (`max_scored`):** Bevor Claude überhaupt bewertet, werden die
+   Kandidaten nach **Aufrufzahlen** sortiert und auf `max_scored` (40) gekappt. → Du
+   zahlst nie für 200 Claude-Calls, nur für die 40 aussichtsreichsten. Aufrufzahlen
+   kosten fast nichts (1 API-Einheit pro 50 Videos).
+
+**Zwei Modi:**
+- `--initial`: großer Rückblick (`backlog_days`), Sortierung nach *Relevanz dann
+  Beliebtheit*, gekürzt auf `top_n_backlog`. Dein einmaliges Einstiegs-Briefing.
+- normal (weekly): 7-Tage-Fenster, alles ab `min_score`, SCHAUEN zuerst.
+
+**API-Quota (YouTube):** `search()` = 100 Einheiten/Query, `playlistItems`/`videos`
+= 1. Bei ~12 Suchen also ~1 200/Lauf — vom Tageslimit 10 000 weit entfernt. Falls du
+viele Suchbegriffe ergänzt: im Blick behalten, sonst „quotaExceeded".
+
+> Merksatz: **Erst breit finden (Suche), dann günstig vorsortieren (Aufrufe →
+> `max_scored`), dann teuer verstehen (Claude), dann streng filtern (`min_score`).**
+> Diese Reihenfolge hält Qualität hoch und Kosten niedrig.

@@ -1,31 +1,59 @@
-# Kanäle, die das Wochen-Briefing beobachtet.
+# Quellen fürs Briefing: feste Kanäle + Themen-Suche.
+# ===========================================================================
+# Zwei Wege, wie Videos gefunden werden:
+#   1) channels:  bestimmte Creator dauerhaft beobachten
+#   2) searches:  Themen auf ganz YouTube durchsuchen (findet auch neue Kanäle)
 # ---------------------------------------------------------------------------
 # Channel-ID finden (zuverlässigster Weg):
-#   1. Kanal-Seite auf youtube.com öffnen
-#   2. Seitenquelltext anzeigen (Strg+U) und nach "channelId" suchen
-#      -> Wert beginnt mit "UC..." (24 Zeichen)
-#   ODER:  https://www.youtube.com/@HANDLE  ->  "...über..." / "Teilen" -> Kanal-ID kopieren
-#   ODER:  Tools wie commentpicker.com/youtube-channel-id.php (Handle einfügen)
-#
-# Pro Kanal genügt EINS von beidem:
-#   channel_id: "UC..."     (empfohlen, eindeutig)
-#   handle: "@HandleName"    (wird zur Laufzeit aufgelöst — bequemer, 1 API-Call mehr)
-# ---------------------------------------------------------------------------
+#   Kanal-Seite -> Strg+U (Quelltext) -> nach "channelId" suchen (Wert "UC...")
+# Pro Kanal genügt EINS:  channel_id: "UC..."  (eindeutig)  ODER  handle: "@Name"
+# ===========================================================================
 
-lookback_hours: 168          # 7 Tage — passend zum Freitags-Rhythmus
-max_videos_per_channel: 15   # Sicherheitskappe pro Kanal und Lauf
-# model: claude-opus-4-8     # optional hier überschreibbar; sonst via CLAUDE_MODEL-Env
+# --- Zeitfenster & Kappen --------------------------------------------------
+lookback_hours: 168      # weekly (Freitags-Lauf): 7 Tage
+backlog_days: 180        # --initial (Best-of-Backlog): 6 Monate
+max_per_source: 15       # max. Videos pro Kanal / pro Suchbegriff
+top_n_backlog: 15        # --initial: nur die besten N ins Briefing
+min_score: 6             # Signal-Filter: Claude-Score 1–10, darunter fliegt raus
+max_scored: 40           # Kostendeckel: max. so viele Videos werden von Claude bewertet
+# model: claude-opus-4-8 # optional; sonst via CLAUDE_MODEL-Env (günstiger: claude-sonnet-4-6)
 
+# --- Feste Kanäle ----------------------------------------------------------
 channels:
   - name: "Nick Saraev"
-    # channel_id: "UC..."    # <- HIER eintragen (siehe Anleitung oben)
     handle: "@nicksaraev"
+    # channel_id: "UC..."   # stabiler als Handle — bei Gelegenheit eintragen
 
   - name: "Liam Ottley"
-    # channel_id: "UC..."    # <- HIER eintragen
     handle: "@LiamOttley"
+    # channel_id: "UC..."
 
-# Optional: Videos überspringen, deren Titel eines dieser Wörter enthält (lowercase-Vergleich)
+  - name: "Nate Herk"       # postet häufig, AI-Automation / n8n
+    handle: "@nateherk"
+    # channel_id: "UC..."
+
+# --- Themen-Suche (findet relevante Videos beliebiger Kanäle) --------------
+# Deine 4 Fokusthemen. Begriffe frei anpassen/ergänzen. Jede Suche kostet
+# 100 YouTube-API-Einheiten (Tageslimit 10.000) — also gern gezielt halten.
+searches:
+  # Claude-Ökosystem
+  - "Claude Code tutorial"
+  - "Claude AI agents"
+  - "Claude Artifacts"
+  - "Anthropic MCP"
+  # AI-Automation & Side-Hustle
+  - "AI automation agency"
+  - "n8n AI agent build"
+  - "AI agents for business"
+  # AI-Coding-Tools
+  - "agentic coding"
+  - "Cursor AI coding"
+  # KI im Konzern / Produktion
+  - "LLM integration enterprise"
+  - "AI in manufacturing"
+  - "AI process automation"
+
+# Optional: Videos überspringen, deren Titel eines dieser Wörter enthält (lowercase)
 title_stopwords:
   # - "shorts"
   # - "podcast"
